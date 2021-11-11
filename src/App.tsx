@@ -1,15 +1,17 @@
 import { MqttClient } from 'mqtt';
 import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { MqttProvider } from './hooks/useMqtt';
 import ImageCapture from './pages/ImageCapture';
 import Login from './pages/Login';
+import { ConnectionState } from './utils/mqtt';
 
 function App(): React.ReactElement {
   const [mqttClient, setMqttClient] = useState<MqttClient>();
+  const [connectionState, setConnectionState] = useState(ConnectionState.NOT_CONNECTED);
 
   return (
-    <MqttProvider value={{ mqttClient, setMqttClient }}>
+    <MqttProvider value={{ mqttClient, setMqttClient, connectionState, setConnectionState }}>
       <Routes>
         <Route path="/" element={<Navigate replace to="/sensor/login" />} />
         <Route path="/sensor">

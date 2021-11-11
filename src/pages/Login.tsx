@@ -1,64 +1,68 @@
-import { connect, MqttClient, OnMessageCallback } from 'mqtt';
+import { Form, Formik } from 'formik';
 import * as React from 'react';
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import * as Yup from 'yup';
+import Button from '../components/buttons/Button';
 import TextField from '../components/forms/TextField';
-import env from '../env';
 import { useMqtt } from '../hooks/useMqtt';
-import { connectionURL, generateRandomClientID } from '../utils/mqtt';
+import {
+  ConnectionState,
+  connectionURL,
+  createMqttClient,
+  logMessage,
+  setUpSubscriptions,
+} from '../utils/mqtt';
 
-const onConnect = (client: MqttClient) => () => {
-  console.log('Connected');
+interface LoginForm {
+  username: string;
+  password: string;
+}
 
-  const topics = ['test', 'helloworld'];
-  client.subscribe(topics, (err, granted) => {
-    console.log(`Subscribed to topic(s) '${granted.map((grant) => grant.topic).join("', '")}'`);
-
-    client.publish('test', 'This works!', {}, (err) => {
-      if (err) {
-        console.error('Failed to publish message', err);
-      }
-    });
-  });
-};
-
-const onMessage: OnMessageCallback = (topic, message, packet) => {
-  console.log(`[${topic}] Received Message:`, message.toString(), packet);
-};
-
-const createMqttClient = (url: string, username: string, password: string): MqttClient => {
-  const clientId = generateRandomClientID();
-  const client = connect(url, {
-    clientId,
-    clean: true,
-    username,
-    password,
-    connectTimeout: 4000,
-    reconnectPeriod: 1000,
-  });
-  client.on('connect', onConnect(client));
-  client.on('message', onMessage);
-  return client;
-};
+const validationSchema = Yup.object({
+  username: Yup.string().required('Required'),
+  password: Yup.string().required('Required'),
+});
 
 const Login: React.FC = () => {
-  const { mqttClient, setMqttClient } = useMqtt();
+  const { mqttClient, setMqttClient, connectionState, setConnectionState } = useMqtt();
+  const navigate = useNavigate();
 
-  useEffect(() => {
+  // FIXME: don't use alerts for feedback
+
+  const handleSubmit = (values: LoginForm) => {
     // No need to re-connect if the client has already been set up.
-    if (mqttClient) return;
-    // Can't do anything unless the set state action exists.
-    if (!setMqttClient) return;
+    if (mqttClient) {
+      alert(`Connection status: ${connectionState}`);
+      return;
+    }
 
-    // TODO: use user-provided username + password. Do this on form submit instead.
-    const client = createMqttClient(connectionURL, env.MQTT_USERNAME, env.MQTT_PASSWORD);
+    const client = createMqttClient(connectionURL, values.username, values.password);
     setMqttClient(client);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setConnectionState(ConnectionState.CONNECTING);
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    alert(`Hello, ${Object.keys(event)}`);
+    // TODO: extract out into separate functions
+    client.on('connect', (packet) => {
+      alert('Connected!');
+      setConnectionState(ConnectionState.CONNECTED);
+
+      setUpSubscriptions(client);
+      navigate('../camera');
+    });
+    client.on('reconnect', () => {
+      console.log('Reconnecting...');
+      setConnectionState(ConnectionState.RECONNECTING);
+    });
+    client.on('message', logMessage);
+    client.on('error', (error) => {
+      alert(
+        `An error occurred while connecting to the MQTT broker.\n ${error.name}: ${error.message}`,
+      );
+      client.end();
+      setMqttClient(undefined);
+      setConnectionState(ConnectionState.NOT_CONNECTED);
+    });
+
+    alert(`Connection status: ${connectionState}. Please wait a while.`);
   };
 
   return (
@@ -70,16 +74,21 @@ const Login: React.FC = () => {
         </section>
 
         <section className="mt-10">
-          <form className="flex flex-col" onSubmit={handleSubmit}>
-            <TextField id={'username'} label={'Username'} />
-            <TextField id={'password'} label={'Password'} />
-            <button
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded shadow-lg hover:shadow-xl transition duration-200"
-              type="submit"
-            >
-              Sign In
-            </button>
-          </form>
+          <Formik
+            initialValues={{ username: '', password: '' }}
+            validationSchema={validationSchema}
+            onSubmit={handleSubmit}
+          >
+            {(formik) => (
+              <Form className="flex flex-col">
+                <TextField name={'username'} label={'Username'} />
+                <TextField type="password" name={'password'} label={'Password'} />
+                <Button disabled={!formik.isValid} type="submit">
+                  Sign In
+                </Button>
+              </Form>
+            )}
+          </Formik>
         </section>
       </main>
 
