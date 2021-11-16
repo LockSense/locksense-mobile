@@ -2,7 +2,7 @@ import { MqttClient } from 'mqtt';
 import React, { useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { MqttProvider } from './hooks/useMqtt';
-import ImageCapture from './pages/ImageCapture';
+import CameraView from './pages/CameraView';
 import Login from './pages/Login';
 import { ConnectionState } from './utils/mqtt';
 
@@ -16,7 +16,7 @@ function App(): React.ReactElement {
         <Route path="/" element={<Navigate replace to="/sensor/login" />} />
         <Route path="/sensor">
           <Route path="login" element={<Login />} />
-          <Route path="camera" element={<ImageCapture />} />
+          <Route path="camera" element={<CameraView />} />
         </Route>
       </Routes>
     </MqttProvider>

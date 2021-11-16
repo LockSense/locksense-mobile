@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Navigate } from 'react-router';
+import { useMqtt } from '../hooks/useMqtt';
+import { convertToRGBArray, IMG_HEIGHT, IMG_WIDTH } from '../utils/image';
+import { ConnectionState, IMAGE_CHANNEL } from '../utils/mqtt';
 
-const IMG_WIDTH = 500;
-const IMG_HEIGHT = 500;
+const CameraView: React.FC = () => {
+  const { mqttClient, connectionState } = useMqtt();
 
-const ImageCapture: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -38,6 +41,10 @@ const ImageCapture: React.FC = () => {
     mediaStream.getTracks().forEach((track) => track.stop());
   };
 
+  if (!mqttClient || connectionState === ConnectionState.NOT_CONNECTED) {
+    return <Navigate to="../login" />;
+  }
+
   const addImageSource = (src: string) => {
     const numImages = imgSources.length;
     const newImgSources = imgSources.slice(numImages - 2, numImages);
@@ -56,17 +63,17 @@ const ImageCapture: React.FC = () => {
       return;
     }
     ctx.drawImage(videoRef.current, 0, 0);
-    addImageSource(canvasRef.current.toDataURL());
-  };
 
-  const handleCapture = (target: EventTarget & HTMLInputElement) => {
-    if (target.files) {
-      if (target.files.length !== 0) {
-        const file = target.files[0];
-        const newUrl = URL.createObjectURL(file);
-        addImageSource(newUrl);
-      }
-    }
+    const imageURL = canvasRef.current.toDataURL();
+    addImageSource(imageURL);
+
+    // Send image via MQTT
+    const imageData = ctx.getImageData(0, 0, IMG_WIDTH, IMG_HEIGHT).data;
+    const filename = `${new Date()}.jpg`;
+    const payload = { filename, data: convertToRGBArray(imageData, IMG_WIDTH, IMG_HEIGHT) };
+    mqttClient.publish(IMAGE_CHANNEL, JSON.stringify(payload), () =>
+      console.log('published:', payload),
+    );
   };
 
   return (
@@ -81,10 +88,17 @@ const ImageCapture: React.FC = () => {
         {imgSources.length > 0 && (
           <div className="flex justify-center m-2 gap-2">
             {imgSources.map((src) => (
-              <img src={src} alt={'from camera'} className="flex-initial shadow-md w-1/3" />
+              <img
+                key={src}
+                src={src}
+                alt={'from camera'}
+                className="flex-initial shadow-md w-1/3"
+              />
             ))}
           </div>
         )}
+
+        {/* TODO: error message for permission denied */}
 
         <canvas ref={canvasRef} width={IMG_WIDTH} height={IMG_HEIGHT} className="hidden" />
 
@@ -97,26 +111,9 @@ const ImageCapture: React.FC = () => {
         >
           {'Take a Snapshot'}
         </button>
-
-        <input
-          accept="image/*"
-          className="hidden"
-          id="icon-button-file"
-          type="file"
-          capture="environment"
-          onChange={(e) => handleCapture(e.target)}
-        />
-        <label htmlFor="icon-button-file">
-          <div
-            className="bg-purple-600 hover:bg-purple-700 text-white text-center font-bold py-4 min-w-full rounded shadow-lg hover:shadow-xl transition duration-200"
-            style={{ cursor: 'pointer' }}
-          >
-            {'Open Camera / Select Image'}
-          </div>
-        </label>
       </div>
     </main>
   );
 };
 
-export default ImageCapture;
+export default CameraView;

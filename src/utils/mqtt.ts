@@ -1,6 +1,12 @@
 import { connect, MqttClient, OnMessageCallback } from 'mqtt';
 import env from '../env';
 
+/* Constants */
+
+export const IMAGE_CHANNEL = 'IMAGES/classify';
+
+/* General Functions */
+
 export enum ConnectionState {
   CONNECTED = 'Connected',
   CONNECTING = 'Connecting',
