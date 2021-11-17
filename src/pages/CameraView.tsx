@@ -7,7 +7,7 @@ import env from '../env';
 import useInterval from '../hooks/useInterval';
 import { useMqtt } from '../hooks/useMqtt';
 import { convertToRGBArray, IMG_HEIGHT, IMG_WIDTH } from '../utils/image';
-import { ConnectionState } from '../utils/mqtt';
+import { ConnectionState, getClientID } from '../utils/mqtt';
 
 enum ViewMode {
   ENVIRONMENT = 'environment',
@@ -33,8 +33,8 @@ const cleanUpMediaStream = (mediaStream: MediaStream) => {
 const publishToMQTT = (client: MqttClient, imageData: Uint8ClampedArray) => {
   const filename = getImageFilename();
   const data = convertToRGBArray(imageData, IMG_WIDTH, IMG_HEIGHT);
-  // TODO: device ID
-  const payload = JSON.stringify({ filename, data });
+  const device = getClientID();
+  const payload = JSON.stringify({ filename, data, device });
   client.publish(env.IMAGE_CHANNEL, payload, () => {
     console.log('published:', filename);
   });

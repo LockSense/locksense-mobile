@@ -1,3 +1,4 @@
+import Cookies from 'js-cookie';
 import { connect, MqttClient, OnMessageCallback } from 'mqtt';
 import env from '../env';
 
@@ -10,7 +11,25 @@ export enum ConnectionState {
 
 export const connectionURL = `${env.MQTT_PROTOCOL}://${env.MQTT_HOST}:${env.MQTT_PORT}`;
 
-const generateRandomClientID = () => `mqtt_${Math.random().toString(16).slice(3)}`;
+/* Client ID */
+
+const COOKIE_NAME = 'ls_cid';
+const MAX_COOKIE_AGE = 2147483647;
+
+const generateRandomClientID = () => `web_${Math.random().toString(16).slice(3)}`;
+
+export const getClientID = () => {
+  const savedID = Cookies.get(COOKIE_NAME);
+  if (savedID) {
+    return savedID;
+  }
+
+  const newID = generateRandomClientID();
+  Cookies.set(COOKIE_NAME, newID, { expires: MAX_COOKIE_AGE });
+  return newID;
+};
+
+/* Utility functions */
 
 export const setUpSubscriptions = (client: MqttClient) => {
   const topics = ['test', 'helloworld'];
@@ -30,7 +49,7 @@ export const logMessage: OnMessageCallback = (topic, message, packet) => {
 };
 
 export const createMqttClient = (url: string, username: string, password: string): MqttClient => {
-  const clientId = generateRandomClientID();
+  const clientId = getClientID();
   const client = connect(url, {
     clientId,
     clean: true,
