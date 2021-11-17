@@ -1,8 +1,23 @@
+import { MqttClient } from 'mqtt';
 import React, { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router';
+import Button from '../components/buttons/Button';
+import env from '../env';
+import useInterval from '../hooks/useInterval';
 import { useMqtt } from '../hooks/useMqtt';
 import { convertToRGBArray, IMG_HEIGHT, IMG_WIDTH } from '../utils/image';
-import { ConnectionState, IMAGE_CHANNEL } from '../utils/mqtt';
+import { ConnectionState } from '../utils/mqtt';
+
+const getImageFilename = () => `${new Date().toISOString()}.jpg`;
+
+const publishToMQTT = (client: MqttClient, imageData: Uint8ClampedArray) => {
+  const filename = getImageFilename();
+  const data = convertToRGBArray(imageData, IMG_WIDTH, IMG_HEIGHT);
+  const payload = JSON.stringify({ filename, data });
+  client.publish(env.IMAGE_CHANNEL, payload, () => {
+    console.log('published:', filename);
+  });
+};
 
 const CameraView: React.FC = () => {
   const { mqttClient, connectionState } = useMqtt();
@@ -11,6 +26,7 @@ const CameraView: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [shouldStream, setShouldStream] = useState(false);
   const [imgSources, setImgSources] = useState<string[]>([]);
   const [mediaStream, setMediaStream] = useState<MediaStream>();
 
@@ -20,6 +36,8 @@ const CameraView: React.FC = () => {
     // changes to cleanUpMediaStream should not cause a re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useInterval(() => captureFrame(), shouldStream ? 1000 : null);
 
   const setUpVideoStream = async () => {
     if (!navigator.mediaDevices || !videoRef.current) {
@@ -67,13 +85,8 @@ const CameraView: React.FC = () => {
     const imageURL = canvasRef.current.toDataURL();
     addImageSource(imageURL);
 
-    // Send image via MQTT
     const imageData = ctx.getImageData(0, 0, IMG_WIDTH, IMG_HEIGHT).data;
-    const filename = `${new Date()}.jpg`;
-    const payload = { filename, data: convertToRGBArray(imageData, IMG_WIDTH, IMG_HEIGHT) };
-    mqttClient.publish(IMAGE_CHANNEL, JSON.stringify(payload), () =>
-      console.log('published:', payload),
-    );
+    publishToMQTT(mqttClient, imageData);
   };
 
   return (
@@ -84,6 +97,18 @@ const CameraView: React.FC = () => {
         {!isLoading && !mediaStream && (
           <p>{'This browser does not support the Media Capture API :('}</p>
         )}
+
+        {/* TODO: error message for permission denied */}
+
+        <canvas ref={canvasRef} width={IMG_WIDTH} height={IMG_HEIGHT} className="hidden" />
+
+        <video ref={videoRef} autoPlay playsInline />
+
+        <Button size="md" onClick={() => setShouldStream(!shouldStream)}>
+          {shouldStream ? 'Stop Streaming' : 'Start Streaming'}
+        </Button>
+
+        <Button onClick={captureFrame}>{'Take a Snapshot'}</Button>
 
         {imgSources.length > 0 && (
           <div className="flex justify-center m-2 gap-2">
@@ -97,20 +122,6 @@ const CameraView: React.FC = () => {
             ))}
           </div>
         )}
-
-        {/* TODO: error message for permission denied */}
-
-        <canvas ref={canvasRef} width={IMG_WIDTH} height={IMG_HEIGHT} className="hidden" />
-
-        <video ref={videoRef} autoPlay playsInline />
-
-        <button
-          id="camera--trigger"
-          className="bg-purple-600 hover:bg-purple-700 text-white text-center font-bold py-4 min-w-full rounded shadow-lg hover:shadow-xl transition duration-200"
-          onClick={captureFrame}
-        >
-          {'Take a Snapshot'}
-        </button>
       </div>
     </main>
   );

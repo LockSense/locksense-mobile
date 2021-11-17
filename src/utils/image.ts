@@ -1,5 +1,5 @@
-export const IMG_WIDTH = 500;
-export const IMG_HEIGHT = 500;
+export const IMG_WIDTH = 224;
+export const IMG_HEIGHT = 224;
 const NUM_CHANNELS = 3;
 
 function makeArray<T>(length: number): T[] {

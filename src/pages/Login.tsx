@@ -33,6 +33,7 @@ const Login: React.FC = () => {
     // No need to re-connect if the client has already been set up.
     if (mqttClient) {
       alert(`Connection status: ${connectionState}`);
+      navigate('../camera');
       return;
     }
 
