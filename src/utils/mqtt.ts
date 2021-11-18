@@ -33,16 +33,21 @@ export const getClientID = () => {
 
 /* Utility functions */
 
-export const setUpSubscriptions = (client: MqttClient) => {
-  const topics = [env.IMAGE_CONNECT_TOPIC, env.VERDICT_TOPIC];
+export const setUpSubscriptions = (client: MqttClient, doorID: string) => {
+  const topics = [env.IMAGE_CONNECT_TOPIC, `${doorID}/${env.VERDICT_TOPIC}`];
   client.subscribe(topics, (err, granted) => {
     console.log(`Subscribed to topic(s) '${granted.map((grant) => grant.topic).join("', '")}'`);
 
-    client.publish(env.IMAGE_CONNECT_TOPIC, `${getClientID()} connected!`, {}, (err) => {
-      if (err) {
-        console.error('Failed to publish message', err);
-      }
-    });
+    client.publish(
+      env.IMAGE_CONNECT_TOPIC,
+      `${getClientID()} connected as ${doorID}!`,
+      {},
+      (err) => {
+        if (err) {
+          console.error('Failed to publish message', err);
+        }
+      },
+    );
   });
 };
 
@@ -51,22 +56,24 @@ interface VerdictMessage {
   response: InferenceResult;
 }
 
-export const onMessage: OnMessageCallback = (topic, message, packet) => {
-  console.log(`[${topic}] Received Message:`, message.toString(), packet);
-  if (topic === env.VERDICT_TOPIC) {
-    const payload = JSON.parse(message.toString()) as VerdictMessage;
-    switch (payload.response) {
-      case InferenceResult.LOCK_PICK:
-        toast.error(messageMap[payload.response]);
-        return;
-      case InferenceResult.UNLOCK:
-        toast.success(messageMap[payload.response]);
-        return;
-      case InferenceResult.EMPTY:
-        return;
+export const onMessage =
+  (doorID: string): OnMessageCallback =>
+  (topic, message, packet) => {
+    console.log(`[${topic}] Received Message:`, message.toString(), packet);
+    if (topic === `${doorID}/${env.VERDICT_TOPIC}`) {
+      const payload = JSON.parse(message.toString()) as VerdictMessage;
+      switch (payload.response) {
+        case InferenceResult.LOCK_PICK:
+          toast.error(messageMap[payload.response]);
+          return;
+        case InferenceResult.UNLOCK:
+          toast.success(messageMap[payload.response]);
+          return;
+        case InferenceResult.EMPTY:
+          return;
+      }
     }
-  }
-};
+  };
 
 export const createMqttClient = (url: string, username: string, password: string): MqttClient => {
   const clientId = getClientID();

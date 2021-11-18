@@ -1,11 +1,15 @@
 import { Form, Formik } from 'formik';
 import * as React from 'react';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import Button from '../components/buttons/Button';
 import TextField from '../components/forms/TextField';
+import ChoiceModal from '../components/modals/ChoiceModal';
 import env from '../env';
 import { useMqtt } from '../hooks/useMqtt';
+import { useStore } from '../hooks/useStore';
 import {
   ConnectionState,
   connectionURL,
@@ -28,13 +32,14 @@ const validationSchema = Yup.object({
 const Login: React.FC = () => {
   const { mqttClient, setMqttClient, connectionState, setConnectionState } = useMqtt();
   const navigate = useNavigate();
+  const { setStore } = useStore();
 
-  // TODO: don't use alerts for feedback
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSubmit = (values: LoginForm) => {
     // No need to re-connect if the client has already been set up.
     if (mqttClient) {
-      alert(`Connection status: ${connectionState}`);
+      toast(`Connection status: ${connectionState}`, { duration: 2000 });
       switch (connectionState) {
         case ConnectionState.CONNECTED:
           navigate('../camera');
@@ -54,19 +59,16 @@ const Login: React.FC = () => {
 
     // TODO: extract out into separate functions
     client.on('connect', (packet) => {
-      alert('Connected!');
+      toast('Connected!', { duration: 2000 });
       setConnectionState(ConnectionState.CONNECTED);
-
-      setUpSubscriptions(client);
-      navigate('../camera');
+      setIsModalOpen(true);
     });
     client.on('reconnect', () => {
-      console.log('Reconnecting...');
+      toast('Reconnecting...', { id: 'mqttReconnecting', duration: 2000 });
       setConnectionState(ConnectionState.RECONNECTING);
     });
-    client.on('message', onMessage);
     client.on('error', (error) => {
-      alert(
+      toast.error(
         `An error occurred while connecting to the MQTT broker.\n ${error.name}: ${error.message}`,
       );
       client.end();
@@ -74,11 +76,32 @@ const Login: React.FC = () => {
       setConnectionState(ConnectionState.NOT_CONNECTED);
     });
 
-    alert(`Connection status: ${connectionState}. Please wait a while.`);
+    toast(`Connection status: ${connectionState}. Please wait a while.`, { duration: 1000 });
+  };
+
+  const handleModalClick = (index: number) => {
+    // TODO: figure out error handling
+    if (!mqttClient) return;
+
+    const doorID = index === 0 ? 'door1' : 'door2';
+    setUpSubscriptions(mqttClient, doorID);
+    mqttClient.on('message', onMessage(doorID));
+
+    setStore({ doorID });
+    navigate('../camera');
   };
 
   return (
     <>
+      {isModalOpen && (
+        <ChoiceModal
+          title="Which door set is this?"
+          content="It decides how your data is streamed and matched with audio input."
+          buttonLabels={['Door 1', 'Door 2']}
+          onClick={handleModalClick}
+        />
+      )}
+
       <main className="bg-white max-w-lg min-h-full mx-auto p-8 md:p-12 my-10 rounded-lg md:shadow-2xl">
         <section>
           <h3 className="font-bold text-2xl">Welcome to LockSense</h3>

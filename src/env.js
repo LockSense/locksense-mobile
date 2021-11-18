@@ -6,7 +6,7 @@ const env = {
   IMAGE_CONNECT_TOPIC: 'image/connect',
   IMAGE_DATA_TOPIC: 'image/data',
   IMAGE_TRIGGER_TOPIC: 'image/trigger',
-  VERDICT_TOPIC: 'door1/verdict', // FIXME: account for multiple devices
+  VERDICT_TOPIC: 'verdict',
 };
 
 export default env;
