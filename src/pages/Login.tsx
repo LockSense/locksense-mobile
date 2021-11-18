@@ -1,6 +1,6 @@
 import { Form, Formik } from 'formik';
 import * as React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import Button from '../components/buttons/Button';
 import TextField from '../components/forms/TextField';
@@ -29,16 +29,19 @@ const Login: React.FC = () => {
   const { mqttClient, setMqttClient, connectionState, setConnectionState } = useMqtt();
   const navigate = useNavigate();
 
-  // FIXME: don't use alerts for feedback
+  // TODO: don't use alerts for feedback
 
   const handleSubmit = (values: LoginForm) => {
     // No need to re-connect if the client has already been set up.
     if (mqttClient) {
       alert(`Connection status: ${connectionState}`);
-      if (connectionState === ConnectionState.CONNECTED) {
-        navigate('../camera');
+      switch (connectionState) {
+        case ConnectionState.CONNECTED:
+          navigate('../camera');
+          return;
+        case ConnectionState.CONNECTING:
+          return;
       }
-      return;
     }
 
     const client = createMqttClient(
@@ -103,13 +106,7 @@ const Login: React.FC = () => {
       </main>
 
       <div className="max-w-lg mx-auto text-center mt-12 mb-6">
-        <p className="text-gray-600">
-          Don't have an account?{' '}
-          <Link to="../register" className="font-bold hover:underline">
-            Register
-          </Link>
-          .
-        </p>
+        <p className="text-gray-600">{`Status: ${connectionState}`}</p>
       </div>
     </>
   );
