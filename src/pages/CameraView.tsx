@@ -36,7 +36,8 @@ const publishToMQTT = (client: MqttClient, imageData: Uint8ClampedArray) => {
   const data = convertToRGBArray(imageData, IMG_WIDTH, IMG_HEIGHT);
   const device = getClientID();
   const payload = JSON.stringify({ filename, data, device });
-  client.publish(env.IMAGE_CHANNEL, payload, () => {
+  client.publish(env.IMAGE_TRIGGER_TOPIC, JSON.stringify({ fileName: filename, device }));
+  client.publish(env.IMAGE_DATA_TOPIC, payload, () => {
     console.log('published:', filename);
   });
 };
