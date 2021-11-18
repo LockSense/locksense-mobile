@@ -6,6 +6,7 @@ import SwitchHorizontalIcon from '../components/icons/SwitchHorizontal';
 import env from '../env';
 import useInterval from '../hooks/useInterval';
 import { useMqtt } from '../hooks/useMqtt';
+import { formatDate } from '../utils/datetime';
 import { convertToRGBArray, IMG_HEIGHT, IMG_WIDTH } from '../utils/image';
 import { ConnectionState, getClientID } from '../utils/mqtt';
 
@@ -14,7 +15,7 @@ enum ViewMode {
   USER = 'user',
 }
 
-const getImageFilename = () => `${new Date().toISOString()}.jpg`;
+const getImageFilename = () => `${formatDate(new Date())}.jpg`;
 
 const getVideoStream = async (viewMode = ViewMode.ENVIRONMENT) => {
   if (!navigator.mediaDevices) {
