@@ -1,5 +1,6 @@
 import { MqttClient } from 'mqtt';
 import React, { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { MqttProvider } from './hooks/useMqtt';
 import CameraView from './pages/CameraView';
@@ -19,6 +20,17 @@ function App(): React.ReactElement {
           <Route path="camera" element={<CameraView />} />
         </Route>
       </Routes>
+
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
     </MqttProvider>
   );
 }

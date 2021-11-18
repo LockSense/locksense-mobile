@@ -10,7 +10,7 @@ import {
   ConnectionState,
   connectionURL,
   createMqttClient,
-  logMessage,
+  onMessage,
   setUpSubscriptions,
 } from '../utils/mqtt';
 
@@ -61,7 +61,7 @@ const Login: React.FC = () => {
       console.log('Reconnecting...');
       setConnectionState(ConnectionState.RECONNECTING);
     });
-    client.on('message', logMessage);
+    client.on('message', onMessage);
     client.on('error', (error) => {
       alert(
         `An error occurred while connecting to the MQTT broker.\n ${error.name}: ${error.message}`,
