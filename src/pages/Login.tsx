@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import Button from '../components/buttons/Button';
 import TextField from '../components/forms/TextField';
+import env from '../env';
 import { useMqtt } from '../hooks/useMqtt';
 import {
   ConnectionState,
@@ -14,6 +15,7 @@ import {
 } from '../utils/mqtt';
 
 interface LoginForm {
+  hostname: string;
   username: string;
   password: string;
 }
@@ -33,11 +35,17 @@ const Login: React.FC = () => {
     // No need to re-connect if the client has already been set up.
     if (mqttClient) {
       alert(`Connection status: ${connectionState}`);
-      navigate('../camera');
+      if (connectionState === ConnectionState.CONNECTED) {
+        navigate('../camera');
+      }
       return;
     }
 
-    const client = createMqttClient(connectionURL, values.username, values.password);
+    const client = createMqttClient(
+      connectionURL(values.hostname),
+      values.username,
+      values.password,
+    );
     setMqttClient(client);
     setConnectionState(ConnectionState.CONNECTING);
 
@@ -71,17 +79,18 @@ const Login: React.FC = () => {
       <main className="bg-white max-w-lg min-h-full mx-auto p-8 md:p-12 my-10 rounded-lg md:shadow-2xl">
         <section>
           <h3 className="font-bold text-2xl">Welcome to LockSense</h3>
-          <p className="text-gray-600 pt-2">Sign in to your account.</p>
+          <p className="text-gray-600 pt-2">{'Sign in to your account.'}</p>
         </section>
 
         <section className="mt-10">
           <Formik
-            initialValues={{ username: '', password: '' }}
+            initialValues={{ hostname: env.MQTT_HOST, username: '', password: '' }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >
             {(formik) => (
               <Form className="flex flex-col">
+                <TextField name={'hostname'} label={'Host'} />
                 <TextField name={'username'} label={'Username'} />
                 <TextField type="password" name={'password'} label={'Password'} />
                 <Button disabled={!formik.isValid} type="submit">

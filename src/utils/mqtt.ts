@@ -9,7 +9,7 @@ export enum ConnectionState {
   NOT_CONNECTED = 'Not connected',
 }
 
-export const connectionURL = `${env.MQTT_PROTOCOL}://${env.MQTT_HOST}:${env.MQTT_PORT}`;
+export const connectionURL = (host: string) => `${env.MQTT_PROTOCOL}://${host}:${env.MQTT_PORT}`;
 
 /* Client ID */
 
@@ -56,7 +56,9 @@ export const createMqttClient = (url: string, username: string, password: string
     username,
     password,
     connectTimeout: 4000,
-    reconnectPeriod: 1000,
+    reconnectPeriod: 2000,
+    // Allow self-signed cert
+    rejectUnauthorized: false,
   });
   return client;
 };
