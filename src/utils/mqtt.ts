@@ -32,11 +32,10 @@ export const getClientID = () => {
 /* Utility functions */
 
 export const setUpSubscriptions = (client: MqttClient) => {
-  const topics = ['test', 'helloworld'];
-  client.subscribe(topics, (err, granted) => {
+  client.subscribe(env.IMAGE_CONNECT_TOPIC, (err, granted) => {
     console.log(`Subscribed to topic(s) '${granted.map((grant) => grant.topic).join("', '")}'`);
 
-    client.publish('test', 'This works!', {}, (err) => {
+    client.publish(env.IMAGE_CONNECT_TOPIC, `${getClientID()} connected!`, {}, (err) => {
       if (err) {
         console.error('Failed to publish message', err);
       }
